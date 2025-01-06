@@ -1,10 +1,9 @@
-(function (EXPORTS) { //ethOperator v1.0.2
+(function (EXPORTS) { //bscOperator v1.0.2
     /* ETH Crypto and API Operator */
     if (!window.ethers)
-      return 
-    console.error('ethers.js not found')
-    const ethOperator = EXPORTS;
-    const isValidAddress = ethOperator.isValidAddress = (address) => {
+      return console.error('ethers.js not found')
+    const bscOperator = EXPORTS;
+    const isValidAddress = bscOperator.isValidAddress = (address) => {
       try {
         // Check if the address is a valid checksum address
         const isValidChecksum = ethers.utils.isAddress(address);
@@ -15,7 +14,7 @@
         return false;
       }
     }
-    const ERC20ABI = [
+    const BEP20ABI = [
       {
         "constant": true,
         "inputs": [],
@@ -238,15 +237,23 @@
       }
     ]
     const CONTRACT_ADDRESSES = {
-      usdc: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      usdt: "0xdac17f958d2ee523a2206206994597c13d831ec7"
+      usdc: "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+      usdt: "0x55d398326f99059ff775485246999027b3197955"
     }
     function getProvider() {
       // switches provider based on whether the user is using MetaMask or not
+      const bscMainnet = {
+        chainId: 56,
+        name: 'binance',
+        rpc: 'https://bsc-dataseed.binance.org/',
+        explorer: 'https://bscscan.com'
+      };
+    
+    
       if (window.ethereum) {
         return new ethers.providers.Web3Provider(window.ethereum);
       } else {
-        return new ethers.providers.JsonRpcProvider(`https://mainnet.infura.io/v3/6e12fee52bdd48208f0d82fb345bcb3c`)
+        return new ethers.providers.JsonRpcProvider(bscMainnet.rpc, bscMainnet)
       }
     }
     function connectToMetaMask() {
@@ -266,8 +273,9 @@
           })
       })
     }
-    // connectToMetaMask();
-    const getBalance = ethOperator.getBalance = async (address) => {
+    
+    
+    const getBalance = bscOperator.getBalance = async (address) => {
       try {
         if (!address || !isValidAddress(address))
           return new Error('Invalid address');
@@ -281,25 +289,74 @@
         return error;
       }
     }
-    const getTokenBalance = ethOperator.getTokenBalance = async (address, token, { contractAddress } = {}) => {
+
+
+   
+  
+    
+    
+     
+
+     const getTokenBalance = bscOperator.getTokenBalance = async (address, token, { contractAddress } = {}) => {
       try {
-        // if (!window.ethereum.isConnected()) {
-        //   await connectToMetaMask();
-        // }
-        if (!token)
-          return new Error("Token not specified");
-        if (!CONTRACT_ADDRESSES[token] && contractAddress)
-          return new Error('Contract address of token not available')
-        const usdcContract = new ethers.Contract(CONTRACT_ADDRESSES[token] || contractAddress, ERC20ABI, getProvider());
-        let balance = await usdcContract.balanceOf(address);
-        balance = parseFloat(ethers.utils.formatUnits(balance, 6)); // Assuming 6 decimals
+        if (!address) {
+          throw new Error("Address not specified");
+        }
+        if (!token) {
+          throw new Error("Token not specified");
+        }
+        if (!CONTRACT_ADDRESSES[token] && !contractAddress) {
+          throw new Error("Contract address of token not available");
+        }
+    
+        const provider = getProvider(); // Ensure this returns a valid provider for BSC
+        const contract = new ethers.Contract(CONTRACT_ADDRESSES[token] || contractAddress, BEP20ABI, provider);
+        
+        let balance = await contract.balanceOf(address);
+        
+        // Assuming 18 decimals for most tokens like USDT and USDC*****************************************************
+        //  const decimals = 0.00;
+        const decimals = 18;
+        const formattedDecimals = decimals.toFixed(1);  
+        console.log(formattedDecimals); // Outputs: "18.0"
+
+        balance = parseFloat(ethers.utils.formatUnits(balance, decimals)); 
+    
+        // Format the balance to 2 decimal places for display
+        balance = balance.toFixed(2);
+    
         return balance;
-      } catch (e) {
-        console.error(e);
+      } 
+      catch (e) {
+        //  console.error("Error getting token balance:", e.message);
+        //  throw new Error("Failed to get token balance");
       }
     }
   
-    const estimateGas = ethOperator.estimateGas = async ({ privateKey, receiver, amount }) => {
+
+    //  Example usage:
+    // Ensure MetaMask is connected and BSC network is selected in MetaMask
+    const address = '0xYourAddressHere'; // Replace with your actual address
+    (async () => {
+      try {
+        const usdtBalance = await getTokenBalance(address, 'USDT');
+        const bnbBalance = await getTokenBalance(address, 'BNB');
+        console.log('USDT Balance:', usdtBalance);
+        console.log('BNB Balance:', bnbBalance);
+      } catch (error) {
+        console.error('Error fetching balances:', error.message);
+      }
+    })();
+    
+  
+    
+
+
+
+
+
+
+    const estimateGas = bscOperator.estimateGas = async ({ privateKey, receiver, amount }) => {
       try {
         const provider = getProvider();
         const signer = new ethers.Wallet(privateKey, provider);
@@ -313,7 +370,7 @@
       }
     }
   
-    const sendTransaction = ethOperator.sendTransaction = async ({ privateKey, receiver, amount }) => {
+    const sendTransaction = bscOperator.sendTransaction = async ({ privateKey, receiver, amount }) => {
       try {
         const provider = getProvider();
         const signer = new ethers.Wallet(privateKey, provider);
@@ -329,17 +386,41 @@
       } catch (e) {
         throw new Error(e)
       }
-    }
+    };
+    
   
-    const sendToken = ethOperator.sendToken = async ({ token, privateKey, amount, receiver, contractAddress }) => {
+    const sendToken = bscOperator.sendToken = async ({ token, privateKey, amount, receiver, contractAddress }) => {
       // Create a wallet using the private key
       const wallet = new ethers.Wallet(privateKey, getProvider());
+  
       // Contract interface
-      const tokenContract = new ethers.Contract(CONTRACT_ADDRESSES[token] || contractAddress, ERC20ABI, wallet);
-      // Convert the amount to the smallest unit of USDC (wei)
-      const amountWei = ethers.utils.parseUnits(amount.toString(), 6); // Assuming 6 decimals for USDC
+      const tokenContract = new ethers.Contract(CONTRACT_ADDRESSES[token] || contractAddress, BEP20ABI, wallet);
+  
+      // Fetch the correct number of decimals for the token
+      const decimals = await tokenContract.decimals();
+  
+      // Convert the amount to the smallest unit of the token
+      const amountWei = ethers.utils.parseUnits(amount.toString(), decimals);
+  
+      // Estimate gas limit for the transaction
+      const gasLimit = await tokenContract.estimateGas.transfer(receiver, amountWei);
+  
+      // Get the current gas price
+      const gasPrice = await wallet.provider.getGasPrice();
+  
+      // Calculate the gas cost
+      const gasCost = gasPrice.mul(gasLimit);
+  
+      console.log(`Gas cost: ${ethers.utils.formatEther(gasCost)} BNB`);
+  
+      // Check if wallet has enough balance to cover gas fees
+      const balance = await wallet.getBalance();
+      if (balance.lt(gasCost)) {
+        throw new Error("Insufficient funds for gas fee");
+      }
+  
   
       // Call the transfer function on the USDC contract
-      return tokenContract.transfer(receiver, amountWei)
+      return tokenContract.transfer(receiver, amountWei, { gasLimit, gasPrice });
     }
-  })('object' === typeof module ? module.exports : window.ethOperator = {});
+  })('object' === typeof module ? module.exports : window.bscOperator = {});

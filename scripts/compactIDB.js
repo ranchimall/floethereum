@@ -223,6 +223,16 @@
         })
     }*/
 
+
+
+
+
+
+        // ********************
+    
+
+        // ********************
+
     compactIDB.searchData = function (obsName, options = {}, dbName = defaultDB) {
         options.lowerKey = options.atKey || options.lowerKey || 0
         options.upperKey = options.atKey || options.upperKey || false
