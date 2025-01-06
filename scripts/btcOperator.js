@@ -19,7 +19,7 @@
             })
     }
     let isTor = false;
-    checkIfTor().then(result => isTor = result);
+     checkIfTor().then(result => isTor = result);
 
     async function post(url, data, { asText = false } = {}) {
         try {

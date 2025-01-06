@@ -8425,4 +8425,3 @@ var bip32 = {};
     bip32.HDKey = HDKey
 })();
 var HDKey = bip32.HDKey;
-
